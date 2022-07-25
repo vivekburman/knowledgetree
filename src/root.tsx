@@ -1,12 +1,8 @@
 import React, { Component } from "react";
-
-class Root extends Component {
-    constructor(props: {} | Readonly<{}>) {
-        super(props);
-    }
+export class Root extends Component {
     render(): React.ReactNode {
         return (
-            <div className=""></div>
+            <div className="kta-full-width kta-full-height">Hellow</div>
         )
     }
 }
