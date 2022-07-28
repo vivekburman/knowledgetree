@@ -1,0 +1,64 @@
+$size: 20vmin;
+$color-1: rgba(255, 0, 0, 0.526);
+$color-2: rgba(2, 255, 91, 0.526);
+$color-3: rgba(3, 133, 255, 0.526);
+$anim: 5s ease;
+
+.kta-splash-loader {
+    position: relative;
+    width: $size;
+    height: $size;
+    overflow: hidden;
+    $box-size:   $size * .48;
+    $box-margin: $size * .04;
+    $pos-near: $box-size;
+    $pos-far:  $box-size*2 + $box-margin;
+    &::after {
+        content: '';
+        display: block;
+        position: absolute;
+        bottom: 100%; 
+        right: 100%;
+        width:  $box-size;
+        height: $box-size;
+        box-shadow:
+                $pos-near $pos-near  0 0  $color-1,
+                $pos-near $pos-far   0 0  $color-2,
+                $pos-far  $pos-far   0 0  $color-3;
+        animation: shuffle $anim infinite;
+    }
+
+    //The positions of a single block completing a full round (including waiting in line):
+    $positions: (
+        ($pos-near $pos-near),
+        ($pos-near $pos-near),
+        ($pos-near $pos-near),
+        ($pos-near $pos-far),
+        ($pos-near $pos-far),
+        ($pos-near $pos-far),
+        ($pos-far  $pos-far),
+        ($pos-far  $pos-far),
+        ($pos-far  $pos-far),
+        ($pos-far  $pos-near),
+        ($pos-far  $pos-near),
+        ($pos-far  $pos-near)
+    );
+    $pos-count: length($positions);
+    
+    @keyframes shuffle {
+        @for $i from 0 through $pos-count {
+            $p-1:  $i      % $pos-count;
+            $p-2: ($i + 4) % $pos-count;
+            $p-3: ($i + 8) % $pos-count;
+            
+            #{100% * $i/$pos-count} {
+                /* #{$p-1} #{$p-2} #{$p-3} */
+                box-shadow:
+                    nth($positions, $p-1+1)  0 0  $color-1,
+                    nth($positions, $p-2+1)  0 0  $color-2,
+                    nth($positions, $p-3+1)  0 0  $color-3;
+            }
+        }
+    }
+
+}

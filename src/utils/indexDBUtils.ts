@@ -19,37 +19,44 @@ import KTEnum from "./KTEnum";
 export default class IndexDBUtils {
     static instance: IndexDBUtils;
     dbRequest!: IDBOpenDBRequest;
-    dbTransaction: IDBDatabase | undefined;
+    dbTransaction!: IDBDatabase;
+    static objectStoreName: string;
+    static objectStorePath: string;
 
-    static getInstance() {
+    static getInstance(objectStoreName?: string, objectStorePath?: string) {
         if (!this.instance) {
             this.instance = new IndexDBUtils();
+            this.objectStoreName = objectStoreName || KTEnum.INDEXED_DB.OBJECT_STORE.PROJECT.NAME;
+            this.objectStorePath = objectStorePath || KTEnum.INDEXED_DB.OBJECT_STORE.PROJECT.KEY_PATH;
         }
         return this.instance;
     }
     
-    openDB(dbName: string, dbVersion: number) {
+    openDB(dbName: string, dbVersion: number, successCallback?: Function, failureCallback?: Function) {
         this.dbRequest = indexedDB.open(dbName, dbVersion);
-        this.dbRequest.onerror = this.onDBError;
-        this.dbRequest.onsuccess = this.onDBSuccess;
+        this.dbRequest.onerror = () => this.onDBError(failureCallback || ktUtil.getEmptyFunction());
+        this.dbRequest.onsuccess = () => this.onDBSuccess(successCallback || ktUtil.getEmptyFunction());
         this.dbRequest.onupgradeneeded = this.onUpgradeNeeded;
         this.dbRequest.onblocked = this.onBlocked;
     }
 
-    onDBSuccess = () => {
-        this.dbTransaction = this.dbRequest.result;
+    onDBSuccess = (successCallback: Function) => {
+        if (this.dbRequest.readyState === KTEnum.INDEXED_DB.STATE.DONE) {
+            this.dbTransaction = this.dbRequest.result;
+            successCallback();
+        }
     }
 
-    onDBError() {
-        console.error("IndexDBUtils Error: " + this.dbRequest.error);
+    onDBError(failureCallback: Function) {
+        failureCallback(this.dbRequest);
     }
 
     onBlocked() {
-
+        console.error("IndexDBUtils Blocked:");
     }
 
     onVersionChange() {
-
+        console.log("IndexDBUtils Version Changed:");
     }
 
     onTxComplete(event: Event, callBack: Function) {
@@ -60,27 +67,111 @@ export default class IndexDBUtils {
         callBack(event);
     }
 
+    getEntry(keyPath: IDBValidKey | IDBKeyRange, successCallback: Function, failureCallback?: Function) {
+        if(ktUtil.isNullOrUndefined(keyPath)) {
+            throw Error("Key Path is null or undefined");
+        } else {
+            const store = this.createTransaction({
+                successCallback, 
+                failureCallback,
+                objectStoreName: IndexDBUtils.objectStoreName
+            });
+            store.get(keyPath);
+        }
+    }
 
-    addTransaction(data: any, successCallback?: Function, failureCallback?: Function) {
+    getEntries(successCallback: Function, failureCallback?: Function) {
+        const store = this.createTransaction({
+            successCallback, 
+            failureCallback,
+            objectStoreName: IndexDBUtils.objectStoreName
+        });
+        store.getAll();
+    }
+
+    getEntriesKeys(successCallback: Function, failureCallback?: Function) {
+        const store = this.createTransaction({
+            successCallback, 
+            failureCallback,
+            objectStoreName: IndexDBUtils.objectStoreName
+        });
+        store.getAllKeys();
+    }
+
+    getEntryKey(keyPath: IDBValidKey | IDBKeyRange, successCallback: Function, failureCallback?: Function) {
+        if(ktUtil.isNullOrUndefined(keyPath)) {
+            throw Error("Key Path is null or undefined");
+        } else {
+            const store = this.createTransaction({
+                successCallback, 
+                failureCallback,
+                objectStoreName: IndexDBUtils.objectStoreName
+            });
+            store.getKey(keyPath);
+        }
+    }
+
+
+    addTransaction(data: any, successCallback: Function, failureCallback?: Function) {
         if (!this.dbTransaction) {
             throw Error("DB Transaction is null");
         } else if(ktUtil.isNullOrUndefined(data)) {
             throw Error("Data object is null or undefined");
         } else {
-            const tx = this.dbTransaction.transaction(KTEnum.INDEXED_DB.OBJECT_STORE.PROJECT.NAME, "readwrite");
-            tx.oncomplete = (event) => this.onTxComplete(event, successCallback || ktUtil.getEmptyFunction());
-            tx.onerror = (event) => this.onTxError(event, failureCallback || ktUtil.getEmptyFunction());
-            const store = tx.objectStore(KTEnum.INDEXED_DB.OBJECT_STORE.PROJECT.NAME);
+            const store = this.createTransaction({
+                successCallback, 
+                failureCallback,
+                objectStoreName: IndexDBUtils.objectStoreName
+            });
             store.add(data);
         }
     }
-
-    onUpgradeNeeded() {
-        const db = this.dbRequest.result;
-        if (!db.objectStoreNames.contains(KTEnum.INDEXED_DB.OBJECT_STORE.PROJECT.NAME)) {
-            db.createObjectStore(KTEnum.INDEXED_DB.OBJECT_STORE.PROJECT.NAME, {
-                "keyPath": KTEnum.INDEXED_DB.OBJECT_STORE.PROJECT.KEY_PATH
+    deleteTransaction(keyPath: string | number, successCallback: Function, failureCallback?: Function) {
+        if (!this.dbTransaction) {
+            throw Error("DB Transaction is null");
+        } else if(ktUtil.isNullOrUndefined(keyPath)) {
+            throw Error("Key path is null or undefined");
+        } else {
+            const store = this.createTransaction({
+                successCallback, 
+                failureCallback,
+                objectStoreName: IndexDBUtils.objectStoreName
             });
+            store.delete(keyPath);
+        }
+    }
+    updateTransaction = (data: any, successCallback: Function, failureCallback?: Function) => {
+        if (!this.dbTransaction) {
+            throw Error("DB Transaction is null");
+        } else if(ktUtil.isNullOrUndefined(data)) {
+            throw Error("Data object is null or undefined");
+        } else {
+            const store = this.createTransaction({
+                successCallback, 
+                failureCallback,
+                objectStoreName: IndexDBUtils.objectStoreName
+            });
+            store.put(data);
+        }
+    }
+
+    createTransaction(props: {successCallback?: Function, failureCallback?: Function, objectStoreName: string}) {
+        const { successCallback, failureCallback, objectStoreName } = props;
+        const tx = this.dbTransaction.transaction(objectStoreName, "readwrite");
+        tx.oncomplete = (event) => this.onTxComplete(event, successCallback || ktUtil.getEmptyFunction());
+        tx.onerror = (event) => this.onTxError(event, failureCallback || ktUtil.getEmptyFunction());
+        const store = tx.objectStore(objectStoreName);
+        return store;
+    }
+
+    onUpgradeNeeded = () => {
+        if (this.dbRequest.readyState === KTEnum.INDEXED_DB.STATE.DONE) {
+            const db = this.dbRequest.result;
+            if (!db.objectStoreNames.contains(IndexDBUtils.objectStoreName)) {
+                db.createObjectStore(IndexDBUtils.objectStoreName, {
+                    "keyPath": IndexDBUtils.objectStorePath
+                });
+            }
         }
     }
 }

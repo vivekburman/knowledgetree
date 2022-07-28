@@ -1,9 +1,11 @@
 * {
     box-sizing: border-box;
 }
-html, body {
+html, body, #root {
     padding: 0;
     margin: 0;
+    height: 100%;
+    width: 100%;
 }
 
 .kta-full-width {
@@ -15,32 +17,46 @@ html, body {
 
 .kta-display-flex {
     display: flex;
-    .kt-column {
+    &.kt-column {
         flex-direction: column;
     }
-    .kt-valign-center {
+    &.kt-valign-center {
         align-items: center;
     }
-    .kt-valign-flexstart {
+    &.kt-valign-flexstart {
         align-items: flex-start;
     }
-    .kt-valign-flexend {
+    &.kt-valign-flexend {
         align-items: flex-end;
     }
-    .kt-halign-center {
+    &.kt-halign-center {
         justify-content: center;
     }
-    .kt-halign-flexstart {
+    &.kt-halign-flexstart {
         justify-content: flex-start;
     }
-    .kt-halign-flexend {
+    &.kt-halign-flexend {
         justify-content: flex-end;
     }
-    .kt-align-center {
+    &.kt-align-center {
         align-items: center;
         justify-content: center;
     }
 }
+.kta-position-absolute {
+    position: absolute
+}
+.kta-position-sticky {
+    position: sticky
+}
+.kta-position-fixed {
+    position: fixed
+}
+.kta-position-relative {
+    position: relative
+}
+
+
 .kti--no-margin {
     margin: 0;
 }
